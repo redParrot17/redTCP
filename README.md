@@ -56,6 +56,9 @@ tcpClient.close();
 ```
 > Change `address` to be the ip address of the computer hosting the server. If the client is hosted on the same computer as the server, change `address` to "localhost".
 
+### Documentation
+Coming soon
+
 ### License
 
 redTCP is released under the [Apache 2.0 license](LICENSE).
