@@ -5,6 +5,7 @@
 Server/Client framework for communicating with a high level of encryption over a tcp connection.
 
 ### redTCP Dependency
+use `master-fb08ef1bba-1` for the RELEASE until further notice
 #### Gradle
 ```gradle
 allprojects {
@@ -34,7 +35,6 @@ dependencies {
     <version>RELEASE</version>
 </dependency>
 ```
-> use `master-fb08ef1bba-1` for the RELEASE until further notice
 
 ### License
 
