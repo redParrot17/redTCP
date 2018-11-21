@@ -1,5 +1,7 @@
 # redTCP
 
+[![](https://jitpack.io/v/redParrot17/redTCP.svg)](https://jitpack.io/#redParrot17/redTCP)
+
 Server/Client framework for communicating with a high level of encryption over a tcp connection.
 
 ### redTCP Dependency
