@@ -4,7 +4,7 @@
 
 Server/Client framework for communicating using a strong end-to-end encryption over a tcp connection.
 
-### redTCP Dependency
+### Download
 use `master-fb08ef1bba-1` for the RELEASE until further notice
 #### Gradle
 ```gradle
