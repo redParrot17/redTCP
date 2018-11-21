@@ -6,7 +6,7 @@ Server/Client framework for communicating with a high level of encryption over a
 #### Maven
 ```xml
 <dependency>
-    <groupId>redParrot17</groupId>
+    <groupId>com.github.redParrot17</groupId>
     <artifactId>redTCP</artifactId>
     <version>VERSION</version>
 </dependency>
