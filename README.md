@@ -1,6 +1,7 @@
 # redTCP
 
 [![](https://jitpack.io/v/redParrot17/redTCP.svg)](https://jitpack.io/#redParrot17/redTCP)
+[![](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)](https://github.com/redParrot17/LICENSE)
 
 Server/Client framework for communicating using a strong end-to-end encryption over a tcp connection.
 
