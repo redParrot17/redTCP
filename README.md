@@ -2,7 +2,7 @@
 
 [![](https://jitpack.io/v/redParrot17/redTCP.svg)](https://jitpack.io/#redParrot17/redTCP)
 
-Server/Client framework for communicating with a high level of encryption over a tcp connection.
+Server/Client framework for communicating using a strong end-to-end encryption over a tcp connection.
 
 ### redTCP Dependency
 use `master-fb08ef1bba-1` for the RELEASE until further notice
