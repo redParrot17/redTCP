@@ -8,7 +8,7 @@ Server/Client framework for communicating with a high level of encryption over a
 <dependency>
     <groupId>com.github.redParrot17</groupId>
     <artifactId>redTCP</artifactId>
-    <version>VERSION</version>
+    <version>RELEASE</version>
 </dependency>
 
 <repository>
