@@ -13,7 +13,8 @@ allprojects {
         maven { url 'https://jitpack.io' }
     }
 }
-
+```
+```gradle
 dependencies {
         implementation 'com.github.redParrot17:redTCP:RELEASE'
 }
@@ -25,7 +26,8 @@ dependencies {
     <id>jitpack.io</id>
     <url>https://jitpack.io</url>
 </repository>
-
+```
+```xml
 <dependency>
     <groupId>com.github.redParrot17</groupId>
     <artifactId>redTCP</artifactId>
