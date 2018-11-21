@@ -5,6 +5,20 @@
 Server/Client framework for communicating with a high level of encryption over a tcp connection.
 
 ### redTCP Dependency
+#### Gradle
+```gradle
+allprojects {
+    repositories {
+        ...
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+dependencies {
+        implementation 'com.github.redParrot17:redTCP:RELEASE'
+}
+```
+
 #### Maven
 ```xml
 <repository>
