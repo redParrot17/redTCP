@@ -18,3 +18,4 @@ Server/Client framework for communicating with a high level of encryption over a
     <version>RELEASE</version>
 </dependency>
 ```
+> use `master-fb08ef1bba-1` for the RELEASE until further notice
