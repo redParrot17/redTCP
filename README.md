@@ -6,7 +6,7 @@
 Server/Client framework for communicating using a strong end-to-end encryption over a tcp connection.
 
 ### Download
-use `master-fb08ef1bba-1` for the RELEASE until further notice
+Replace `RELEASE` with the release you wish to use. The latest release is listed above.
 #### Gradle
 ```gradle
 allprojects {
