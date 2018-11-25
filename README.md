@@ -4,7 +4,8 @@
 [![](https://img.shields.io/badge/JavaDoc-Latest-yellow.svg)](https://redparrot17.github.io/redTCP/)
 [![](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)](https://github.com/redParrot17/LICENSE)
 
-Server/Client framework for communicating using a strong end-to-end encryption over a tcp connection.
+Server/Client framework for communicating using a strong end-to-end encryption over a tcp connection.  
+And by strong, I mean signed 256 bit AES in conjunction with a 4096 bit RSA end-to-end encryption :)
 
 ### Download
 Replace `RELEASE` with the release you wish to use. The latest release is listed above.
