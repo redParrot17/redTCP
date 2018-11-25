@@ -37,28 +37,9 @@ dependencies {
 </dependency>
 ```
 
-### Quick Start
-#### Server Side
-```java
-TcpServer tcpServer = new TcpServer(7070, 0, 0, true);
-tcpServer.addMessageListener(message -> {
-     String text = message.getMessage();
-     System.out.println(text);
-});
-/* wait till you want to shutdown the server */
-tcpServer.close();
-```
-#### Client Side
-```java
-TcpClient tcpClient = new TcpClient("address", 7070, true);
-tcpClient.sendText("HelloWorld!");
-/* wait till you want to shutdown the client */
-tcpClient.close();
-```
-> Change `address` to be the ip address of the computer hosting the server. If the client is hosted on the same computer as the server, change `address` to "localhost".
-
 ### Documentation
-*Coming soon*
+*Coming soon*  
+You can find example code within the [WIKI](https://github.com/redParrot17/redTCP/wiki).
 
 ### License
 
