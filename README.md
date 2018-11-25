@@ -1,4 +1,4 @@
-# redTCP
+# RedTCP
 
 [![](https://jitpack.io/v/redParrot17/redTCP.svg)](https://jitpack.io/#redParrot17/redTCP)
 [![](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)](https://github.com/redParrot17/LICENSE)
@@ -62,7 +62,7 @@ tcpClient.close();
 
 ### License
 
-redTCP is released under the [Apache 2.0 license](LICENSE).
+RedTCP is released under the [Apache 2.0 license](LICENSE).
 
 ```
 Copyright 2018 redParrot17.
