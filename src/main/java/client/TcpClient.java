@@ -215,6 +215,7 @@ public class TcpClient implements AutoCloseable, Runnable {
      * @param message    data to be encrypted
      * @param packetType what the encrypted data represents
      * @param publicKey  the {@link PublicKey} used for encryption
+     * @param privateKey the {@link PrivateKey} used to sign the encryption
      * @return           the completed {@link EncryptionPacket}
      */
     private static EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey publicKey, PrivateKey privateKey) {
@@ -232,7 +233,7 @@ public class TcpClient implements AutoCloseable, Runnable {
      *
      * @param packet     the {@link EncryptionPacket} to be decrypted
      * @param publicKey  the {@link PublicKey} of the connected server
-     * @param privateKey the {@link PrivateKey} used for the decryption
+     * @param privateKey the {@link PrivateKey} used for validating the author
      * @return           the original decrypted data
      * @throws Exception
      */
