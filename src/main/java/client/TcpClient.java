@@ -1,10 +1,10 @@
 package client;
 
-import listener_references.ClientConnection;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import cryptography.HybridCryptography;
 import cryptography.SecuredGCMUsage;
+import listener_references.ClientConnection;
 import listener_references.Command;
 import listener_references.Message;
 import listeners.CommandListener;
@@ -14,7 +14,10 @@ import packets.CommandPacket;
 import packets.EncryptionPacket;
 
 import javax.crypto.spec.GCMParameterSpec;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
 import java.security.*;
@@ -182,7 +185,7 @@ public class TcpClient implements AutoCloseable, Runnable {
                 if (received == null) return;
                 String json = new String(Base64.decodeBase64(received));
                 EncryptionPacket packet = gson.fromJson(json, EncryptionPacket.class);
-                String message = decryptEncryptionPacket(packet, clientKeys.getPrivate());
+                String message = decryptEncryptionPacket(packet, serverPublicKey, clientKeys.getPrivate());
 
                 switch (packet.getPayloadType()) {
                     case TEXT:
@@ -211,15 +214,15 @@ public class TcpClient implements AutoCloseable, Runnable {
      *
      * @param message    data to be encrypted
      * @param packetType what the encrypted data represents
-     * @param key        the {@link PublicKey} used for encryption
+     * @param publicKey  the {@link PublicKey} used for encryption
      * @return           the completed {@link EncryptionPacket}
      */
-    private static EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey key) {
+    private static EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey publicKey, PrivateKey privateKey) {
         byte iv[] = new byte[SecuredGCMUsage.IV_SIZE];
         SecureRandom secRandom = new SecureRandom();
         secRandom.nextBytes(iv);
         GCMParameterSpec gcmParamSpec = new GCMParameterSpec(SecuredGCMUsage.TAG_BIT_LENGTH, iv);
-        String[] encryptedText = encrypt(message, key, gcmParamSpec, "eco.echotrace.77".getBytes());
+        String[] encryptedText = encrypt(message, publicKey, privateKey, gcmParamSpec, "eco.echotrace.77".getBytes());
         if (encryptedText == null || encryptedText.length != 2) return null;
         return new EncryptionPacket(encryptedText[1], packetType, gcmParamSpec, encryptedText[0]);
     }
@@ -227,13 +230,14 @@ public class TcpClient implements AutoCloseable, Runnable {
     /**
      * Attempts to decrypt the encryption packet back into the original content
      *
-     * @param packet    the {@link EncryptionPacket} to be decrypted
-     * @param key       the {@link PrivateKey} used for the decryption
-     * @return          the original decrypted data
+     * @param packet     the {@link EncryptionPacket} to be decrypted
+     * @param publicKey  the {@link PublicKey} of the connected server
+     * @param privateKey the {@link PrivateKey} used for the decryption
+     * @return           the original decrypted data
      * @throws Exception
      */
-    private static String decryptEncryptionPacket(EncryptionPacket packet, PrivateKey key) throws Exception {
-        return decrypt(packet, key, "eco.echotrace.77".getBytes());
+    private static String decryptEncryptionPacket(EncryptionPacket packet, PublicKey publicKey, PrivateKey privateKey) throws Exception {
+        return decrypt(packet, publicKey, privateKey, "eco.echotrace.77".getBytes());
     }
 
     /**
@@ -249,7 +253,7 @@ public class TcpClient implements AutoCloseable, Runnable {
         if (data == null) throw new IllegalArgumentException("Data cannot be null");
         if (serverPublicKey == null) throw new ClientException("Failed to encrypt data: server's public async encryption key does not exist");
         if (outgoing == null) throw new ClientException("Failed to send data: no secure connection to the server exists");
-        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.TEXT, serverPublicKey);
+        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.TEXT, serverPublicKey, clientKeys.getPrivate());
         if (packet == null) throw new ClientException("Failed to encrypt data: could not generate encryption packet");
         outgoing.println(Base64.encodeBase64String(gson.toJson(packet).getBytes()));
     }
@@ -269,7 +273,7 @@ public class TcpClient implements AutoCloseable, Runnable {
         if (serverPublicKey == null) throw new ClientException("Failed to encrypt data: server's public async encryption key does not exist");
         if (outgoing == null) throw new ClientException("Failed to send data: no secure connection to the server exists");
         String data = gson.toJson(new CommandPacket(command, arguments));
-        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.COMMAND, serverPublicKey);
+        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.COMMAND, serverPublicKey, clientKeys.getPrivate());
         if (packet == null) throw new ClientException("Failed to encrypt data: could not generate encryption packet");
         outgoing.println(Base64.encodeBase64String(gson.toJson(packet).getBytes()));
     }

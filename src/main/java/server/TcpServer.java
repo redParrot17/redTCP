@@ -4,25 +4,27 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import cryptography.HybridCryptography;
 import cryptography.SecuredGCMUsage;
-import listeners.ServerConnectionListener;
-import org.apache.commons.codec.binary.Base64;
 import listener_references.Command;
-import listener_references.ServerConnection;
 import listener_references.Message;
+import listener_references.ServerConnection;
 import listeners.CommandListener;
 import listeners.MessageListener;
+import listeners.ServerConnectionListener;
+import org.apache.commons.codec.binary.Base64;
 import packets.CommandPacket;
 import packets.EncryptionPacket;
 
 import javax.crypto.spec.GCMParameterSpec;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.*;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -243,15 +245,15 @@ public class TcpServer implements AutoCloseable, Runnable {
      *
      * @param message    data to be encrypted
      * @param packetType what the encrypted data represents
-     * @param key        the {@link PublicKey} used for encryption
+     * @param publicKey  the {@link PublicKey} used for encryption
      * @return           the completed {@link EncryptionPacket}
      */
-    private EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey key) {
+    private EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey publicKey) {
         byte iv[] = new byte[SecuredGCMUsage.IV_SIZE];
         SecureRandom secRandom = new SecureRandom();
         secRandom.nextBytes(iv);
         GCMParameterSpec gcmParamSpec = new GCMParameterSpec(SecuredGCMUsage.TAG_BIT_LENGTH, iv);
-        String[] encryptedText = HybridCryptography.encrypt(message, key, gcmParamSpec, "eco.echotrace.77".getBytes());
+        String[] encryptedText = HybridCryptography.encrypt(message, publicKey, serverKeys.getPrivate(), gcmParamSpec, "eco.echotrace.77".getBytes());
         if (encryptedText == null || encryptedText.length != 2) return null;
         return new EncryptionPacket(encryptedText[1], packetType, gcmParamSpec, encryptedText[0]);
     }
@@ -260,22 +262,24 @@ public class TcpServer implements AutoCloseable, Runnable {
      * Attempts to decrypt the encryption packet back into the original content
      *
      * @param packet    the {@link EncryptionPacket} to be decrypted
+     * @param publicKey the {@link PublicKey} of the client that sent the packet
      * @return          the original decrypted data
      * @throws Exception
      */
-    private String decryptEncryptionPacket(EncryptionPacket packet) throws Exception {
-        return HybridCryptography.decrypt(packet, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
+    private String decryptEncryptionPacket(EncryptionPacket packet, PublicKey publicKey) throws Exception {
+        return HybridCryptography.decrypt(packet, publicKey, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
     }
 
     /**
      * Attempts to decrypt the encryption packet back into the original content
      *
-     * @param json json data to be decrypted
+     * @param json       json data to be decrypted
+     * @param publicKey  the {@link PublicKey} of the client that sent the packet
      * @throws Exception
      */
-    private String decryptEncryptionPacket(String json) throws Exception {
+    private String decryptEncryptionPacket(String json, PublicKey publicKey) throws Exception {
         EncryptionPacket packet = GSON.fromJson(json, EncryptionPacket.class);
-        return HybridCryptography.decrypt(packet, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
+        return HybridCryptography.decrypt(packet, publicKey, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
     }
 
     /**
@@ -328,7 +332,7 @@ public class TcpServer implements AutoCloseable, Runnable {
         String confirmation;
         byte[] keyBytes;
         String message;
-        PublicKey key;
+        PublicKey publicKey;
 
         try { // receive client public key
             String firstMessage = incoming.readLine();
@@ -343,11 +347,11 @@ public class TcpServer implements AutoCloseable, Runnable {
         try { // construct the public key from the received message
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
             KeyFactory kf = KeyFactory.getInstance("RSA");
-            key = kf.generatePublic(spec);
+            publicKey = kf.generatePublic(spec);
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new ServerException("Failed to construct client's public async encryption key: " + e.getMessage());
         }
-        if (key == null) // make sure that the key actually exists
+        if (publicKey == null) // make sure that the key actually exists
             throw new ServerException("Failed to construct client's public async encryption key");
         // give the client the server public key
         outgoing.println(Arrays.toString(serverKeys.getPublic().getEncoded()));
@@ -357,11 +361,11 @@ public class TcpServer implements AutoCloseable, Runnable {
         } catch (IOException e) {
             throw new ServerException("Communication failure while obtaining confirmation from the client that the server's public key was received: " + e.getMessage());
         }
-        try { message = decryptEncryptionPacket(new String(Base64.decodeBase64(confirmation)));
+        try { message = decryptEncryptionPacket(new String(Base64.decodeBase64(confirmation)), publicKey);
         } catch (Exception e) {
             throw new ServerException("Failed to decrypt confirmation message from the client: " + e.getMessage());
         }
-        if (message.equals("handshake")) return CompletableFuture.completedFuture(key);
+        if (message.equals("handshake")) return CompletableFuture.completedFuture(publicKey);
         else throw new ServerException("Received invalid confirmation that the client received the server's public key");
     }
 
@@ -430,7 +434,7 @@ public class TcpServer implements AutoCloseable, Runnable {
 
                     String json = new String(Base64.decodeBase64(received));
                     EncryptionPacket packet = GSON.fromJson(json, EncryptionPacket.class);
-                    String message = decryptEncryptionPacket(packet);
+                    String message = decryptEncryptionPacket(packet, clientPublicKey);
 
                     switch (packet.getPayloadType()) {
                         case TEXT:
