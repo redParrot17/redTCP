@@ -45,7 +45,7 @@ public class TcpClient implements AutoCloseable, Runnable {
     private ClientListenerManager listenerManager;
 
     /**
-     * Creates a
+     * Creates a new {@link TcpClient} bound to the specified host and port
      *
      * @param   host the host name, or {@code null} for the loopback address.
      * @param   port the port number.
@@ -65,6 +65,14 @@ public class TcpClient implements AutoCloseable, Runnable {
         gson = new GsonBuilder().setLenient().disableHtmlEscaping().serializeNulls().create();
     }
 
+    /**
+     * Creates a new {@link TcpClient} bound to the specified host and port
+     *
+     * @param host               the address of the server
+     * @param port               the port the client should try to connect to the server through
+     * @param connectImmediately true if you want the client to automatically connect to the server
+     * @throws ClientException
+     */
     public TcpClient(String host, int port, boolean connectImmediately) throws ClientException {
         socket = null;
         isOpen = false;
