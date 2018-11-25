@@ -38,8 +38,8 @@ dependencies {
 ```
 
 ### Documentation
-*Coming soon*  
-You can find example code within the [WIKI](https://github.com/redParrot17/redTCP/wiki).
+You can view the JavaDoc [HERE](https://redparrot17.github.io/redTCP/).  
+Example code can be found within the [WIKI](https://github.com/redParrot17/redTCP/wiki).
 
 ### License
 
