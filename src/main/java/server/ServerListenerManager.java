@@ -1,11 +1,12 @@
 package server;
 
 import listener_references.Command;
-import listener_references.ServerConnection;
+import listener_references.Connection;
 import listener_references.Message;
+import listener_references.ServerConnection;
 import listeners.CommandListener;
-import listeners.ServerConnectionListener;
 import listeners.MessageListener;
+import listeners.ServerConnectionListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,14 +107,14 @@ public class ServerListenerManager {
     }
 
     /**
-     * Runs each of the {@link ServerConnectionListener}s with the {@code connection} and {@code event} as input
+     * Runs each of the {@link ServerConnectionListener}s with the {@code connection} and {@code Event} as input
      * @param connection the {@link ServerConnection} to pass to each of the listeners
-     * @param event      the {@link ServerConnection.event} associated with the connection
+     * @param event      the {@link Connection.Event} associated with the connection
      */
-    public synchronized void raiseConnectionEvent(ServerConnection connection, ServerConnection.event event) {
+    public synchronized void raiseConnectionEvent(ServerConnection connection, Connection.Event event) {
         connectionListeners.forEach(listener -> executor.submit((Callable<Void>) () -> {
-            if (event == ServerConnection.event.CONNECTED) listener.onConnectionCreated(connection);
-            if (event == ServerConnection.event.REMOVED) listener.onConnectionRemoved(connection);
+            if (event == Connection.Event.CONNECTED) listener.onConnectionCreated(connection);
+            if (event == Connection.Event.REMOVED) listener.onConnectionRemoved(connection);
             return null;
         }));
     }
