@@ -12,7 +12,7 @@ public class Message {
     private final Connection connection;
 
     /**
-     * @param connection the {@link ServerConnection} from witch the message was received
+     * @param connection the {@link Connection} from witch the message was received
      * @param message    the message that was received
      */
     public Message(Connection connection, String message) {
