@@ -74,7 +74,7 @@ public class TcpClient implements AutoCloseable, Runnable {
      * @param host               the address of the server
      * @param port               the port the client should try to connect to the server through
      * @param connectImmediately true if you want the client to automatically connect to the server
-     * @throws ClientException
+     * @throws ClientException   if something went wrong while the client tried connecting to the server
      */
     public TcpClient(String host, int port, boolean connectImmediately) throws ClientException {
         socket = null;
@@ -111,6 +111,7 @@ public class TcpClient implements AutoCloseable, Runnable {
         if (clientKeys == null) throw new ClientException("Failed to generate async encryption keys");
         try {
             socket = new Socket(address, port);
+            socket.setKeepAlive(true);
             incoming = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             outgoing = new PrintWriter(socket.getOutputStream(), true);
         } catch (IOException ioe) {
@@ -235,7 +236,7 @@ public class TcpClient implements AutoCloseable, Runnable {
      * @param publicKey  the {@link PublicKey} of the connected server
      * @param privateKey the {@link PrivateKey} used for validating the author
      * @return           the original decrypted data
-     * @throws Exception
+     * @throws Exception if something went wrong internally during the encryption process
      */
     private static String decryptEncryptionPacket(EncryptionPacket packet, PublicKey publicKey, PrivateKey privateKey) throws Exception {
         return decrypt(packet, publicKey, privateKey, "eco.echotrace.77".getBytes());
@@ -264,8 +265,8 @@ public class TcpClient implements AutoCloseable, Runnable {
      * {@code arguments} to the server that the client is currently
      * connected to
      *
-     * @param   command
-     * @param   arguments
+     * @param   command   the command to be sent to the server
+     * @param   arguments the command args associated with the command
      * @throws  ClientException if something went wrong while trying
      *          to send the message
      */
