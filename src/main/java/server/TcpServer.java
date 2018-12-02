@@ -119,7 +119,7 @@ public class TcpServer implements AutoCloseable, Runnable {
      * @param timeout           how many milliseconds of zero activity until a client is automatically disconnected
      * @param backLog           how many connections are allowed
      * @param startImmediately  should the server immediately connect and start
-     * @throws ServerException
+     * @throws ServerException  if something went wrong during the startup process
      */
     public TcpServer(int port, int timeout, int backLog, boolean startImmediately) throws ServerException {
         listenerManager = new ServerListenerManager();
@@ -142,7 +142,7 @@ public class TcpServer implements AutoCloseable, Runnable {
      * @param backLog           how many connections are allowed
      * @param startImmediately  should the server immediately connect and start
      * @param bindAddr          the local InetAddress the server will bind to. Leave null if you want to use "localhost"
-     * @throws ServerException
+     * @throws ServerException  if something went wrong during the startup process
      */
     public TcpServer(int port, int timeout, int backLog, InetAddress bindAddr, boolean startImmediately) throws ServerException {
         listenerManager = new ServerListenerManager();
@@ -261,10 +261,10 @@ public class TcpServer implements AutoCloseable, Runnable {
     /**
      * Attempts to decrypt the encryption packet back into the original content
      *
-     * @param packet    the {@link EncryptionPacket} to be decrypted
-     * @param publicKey the {@link PublicKey} of the client that sent the packet
-     * @return          the original decrypted data
-     * @throws Exception
+     * @param packet     the {@link EncryptionPacket} to be decrypted
+     * @param publicKey  the {@link PublicKey} of the client that sent the packet
+     * @return           the original decrypted data
+     * @throws Exception if something went wrong internally with the decryption process
      */
     private String decryptEncryptionPacket(EncryptionPacket packet, PublicKey publicKey) throws Exception {
         return HybridCryptography.decrypt(packet, publicKey, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
@@ -275,7 +275,7 @@ public class TcpServer implements AutoCloseable, Runnable {
      *
      * @param json       json data to be decrypted
      * @param publicKey  the {@link PublicKey} of the client that sent the packet
-     * @throws Exception
+     * @throws Exception if something went wrong internally with the encryption process
      */
     private String decryptEncryptionPacket(String json, PublicKey publicKey) throws Exception {
         EncryptionPacket packet = GSON.fromJson(json, EncryptionPacket.class);
@@ -425,9 +425,10 @@ public class TcpServer implements AutoCloseable, Runnable {
                     return;
                 }
                 socket.setSoTimeout(timeout);
+                socket.setKeepAlive(true);
                 //Logger.log("client", socket.getInetAddress().getHostAddress(), "handshake", "client completed handshake");
                 connection = new ServerConnection(server, socket, clientPublicKey, outgoing);
-                listenerManager.raiseConnectionEvent(connection, ServerConnection.event.CONNECTED);
+                listenerManager.raiseConnectionEvent(connection, ServerConnection.Event.CONNECTED);
                 while (!socket.isClosed()) {
                     String received = incoming.readLine();
                     if (received == null) return;
@@ -468,7 +469,7 @@ public class TcpServer implements AutoCloseable, Runnable {
                 e.printStackTrace();
             }
 
-            listenerManager.raiseConnectionEvent(connection, ServerConnection.event.REMOVED);
+            listenerManager.raiseConnectionEvent(connection, ServerConnection.Event.REMOVED);
         }
 
         @Override
