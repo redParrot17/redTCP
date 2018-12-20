@@ -1,26 +1,21 @@
 package cryptography;
 
-import javax.crypto.Cipher;
-import java.security.SecureRandom;
+import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.SecretKey;
-
-import java.security.NoSuchAlgorithmException;
-import java.security.InvalidKeyException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidAlgorithmParameterException;
-import javax.crypto.BadPaddingException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 /**
  This class securely performs AES encryption in GCM mode, with 256 bits key size.
  */
 public class SecuredGCMUsage {
 
-    public static int AES_KEY_SIZE = 256;
+    static int AES_KEY_SIZE = 256;
     public static int IV_SIZE = 96;
     public static int TAG_BIT_LENGTH = 128;
-    public static String ALGO_TRANSFORMATION_STRING = "AES/GCM/PKCS5Padding";
+    private static String ALGO_TRANSFORMATION_STRING = "AES/GCM/PKCS5Padding";
 
     /**
      * Attempts to encrypt the {@code message} with a symmetric encryption technique
