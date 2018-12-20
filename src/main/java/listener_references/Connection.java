@@ -1,21 +1,22 @@
 package listener_references;
 
 import java.net.Socket;
+import java.sql.Timestamp;
 import java.util.Optional;
 
 /**
- * ServerConnection class that contains information about a socket connection to a client
+ * Connection class that contains information about a socket connection
  */
 public class Connection {
 
-    private transient final Socket socket;
-    private final long connectionCreation;
+    protected transient final Socket socket;
+    protected final Timestamp connectionCreation;
 
     /**
-     * @param socket the actual {@link Socket} that the client is connected to
+     * @param socket the {@link Socket} associated with the connection
      */
     public Connection(Socket socket) {
-        connectionCreation = System.currentTimeMillis();
+        connectionCreation = new Timestamp(System.currentTimeMillis());
         this.socket = socket;
     }
 
@@ -26,7 +27,10 @@ public class Connection {
         return socket;
     }
 
-    public long getConnectionCreated() {
+    /**
+     * @return the {@link Timestamp} of when the connection was established
+     */
+    public Timestamp getConnectionCreated() {
         return connectionCreation;
     }
 
