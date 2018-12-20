@@ -1,5 +1,6 @@
 package cryptography;
 
+import org.json.JSONObject;
 import packets.EncryptionPacket;
 
 import javax.crypto.KeyGenerator;
@@ -25,14 +26,14 @@ public class HybridCryptography {
     /**
      * Attempts to encrypt the string using both symmetric and asymmetric techniques
      *
-     * @param input         String input that is to be encrypted
+     * @param json          JSONObject input that is to be encrypted
      * @param publicKey     {@link PublicKey} used for asymmetric encryption
      * @param privateKey    {@link PrivateKey} used for signing the encryption
      * @param gcmParamSpec  GCM Parameter Specifications used for the encryption
      * @param aadData       extra data tag to be included within the final encryption
      * @return              String array of [ asymmetrically encrypted symmetric encryption key , symmetrically encrypted data ]
      */
-    public static String[] encrypt(String input, PublicKey publicKey, PrivateKey privateKey, GCMParameterSpec gcmParamSpec, byte[] aadData) {
+    public static JSONObject encrypt(JSONObject json, PublicKey publicKey, PrivateKey privateKey, GCMParameterSpec gcmParamSpec, byte[] aadData) {
         SecretKey aesKey = null;
         try {
             KeyGenerator keygen = KeyGenerator.getInstance("AES"); // Specifying algorithm key will be used for
@@ -43,29 +44,34 @@ public class HybridCryptography {
             System.exit(1);
         }
         try {
-            String signature = SecuredRSAUsage.sign(input, privateKey);
-            byte[] encryptedData = SecuredGCMUsage.aesEncrypt(input+","+signature, aesKey,  gcmParamSpec, aadData);
+            String signature = SecuredRSAUsage.sign(json.toString(), privateKey);
+            JSONObject gcmJson = new JSONObject(gcmParamSpec);
+            byte[] encryptedData = SecuredGCMUsage.aesEncrypt(json.toString()+","+signature, aesKey,  gcmParamSpec, aadData);
             String encodedKey = Base64.getEncoder().encodeToString(aesKey.getEncoded());
             String encryptedKey = SecuredRSAUsage.rsaEncrypt(encodedKey, publicKey);
-            return new String[]{encryptedKey, Base64.getEncoder().encodeToString(encryptedData)};
-        } catch(Exception e) {System.out.println("Exception while encryption/decryption"); e.printStackTrace(); }
+            return new JSONObject().put("encrypted_key", encryptedKey).put("gcm_param_spec", gcmJson)
+                    .put("data", Base64.getEncoder().encodeToString(encryptedData));
+        } catch (Exception e) {System.out.println("Exception while encryption/decryption"); e.printStackTrace(); }
         return null;
     }
 
     /**
      * Attempts to decrypt the string using both symmetric and asymmetric techniques
      *
-     * @param packet     {@link EncryptionPacket} that contains the encrypted data
+     * @param json       {@link EncryptionPacket} that contains the encrypted data
      * @param publicKey  {@link PublicKey} used for verifying the integrity of the author
      * @param privateKey {@link PrivateKey} used for the asymmetric decryption
      * @param aadData    the extra data tag used during the encryption
-     * @throws Exception
+     * @throws Exception if something randomly went wrong
      * @return           the original decrypted String
      */
-    public static String decrypt(EncryptionPacket packet, PublicKey publicKey, PrivateKey privateKey, byte[] aadData) throws Exception {
-        String encryptedKey = packet.getKey();
-        String encryptedData = packet.getPayload();
-        GCMParameterSpec gcmParamSpec = packet.getGcmParamSpec();
+
+    public static JSONObject decrypt(JSONObject json, PublicKey publicKey, PrivateKey privateKey, byte[] aadData) throws Exception {
+        String encryptedKey = json.getString("encrypted_key");
+        String encryptedData = json.getString("data");
+        JSONObject inb4Gcm = json.getJSONObject("gcm_param_spec");
+        byte[] iv = parseStrByteArray(inb4Gcm.get("IV").toString());
+        GCMParameterSpec gcmParamSpec = new GCMParameterSpec(inb4Gcm.getInt("TLen"), iv);
         String decryptedKey = SecuredRSAUsage.rsaDecrypt(Base64.getDecoder().decode(encryptedKey), privateKey);
         byte[] decodedKey = Base64.getDecoder().decode(decryptedKey);
         SecretKey originalKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
@@ -74,8 +80,19 @@ public class HybridCryptography {
         int index = decrypted.lastIndexOf(",");
         String original = decrypted.substring(0, index);
         String signature = decrypted.substring(index+1);
-        if (SecuredRSAUsage.verify(original, signature, publicKey)) return original;
-        else throw new Exception("Cannot verify author");
+        if (!SecuredRSAUsage.verify(original, signature, publicKey))
+            throw new Exception("Cannot verify author");
+        return new JSONObject(original);
+    }
+
+    private static byte[] parseStrByteArray(String a) {
+        if (a == null) return null;
+        String[] parsed = a.replaceAll("\\[", "").replaceAll("]", "")
+                .replaceAll(" ", "").split(",");
+        byte[] keyBytes = new byte[parsed.length];
+        for (int b=0; b<parsed.length; b++)
+            keyBytes[b] = Byte.valueOf(parsed[b]);
+        return keyBytes;
     }
 
 }
