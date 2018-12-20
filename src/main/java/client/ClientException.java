@@ -19,7 +19,7 @@ public class ClientException extends Exception {
     static final long serialVersionUID = -3855894576576512748L;
 
     public ClientException(String message, Exception e) {
-        super(message.isEmpty() || message.equals("") ? e.getMessage() : message + " | " + e.getMessage(), e.getCause(), e.getSuppressed().length != 0, e.getStackTrace() != null);
+        super(message.isEmpty() ? e.getMessage() : message + " | " + e.getMessage(), e.getCause(), e.getSuppressed().length != 0, e.getStackTrace() != null);
     }
 
     /**
