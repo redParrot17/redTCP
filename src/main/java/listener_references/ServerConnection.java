@@ -1,5 +1,7 @@
 package listener_references;
 
+import org.json.JSONObject;
+import server.ServerException;
 import server.TcpServer;
 
 import java.io.PrintWriter;
@@ -33,8 +35,8 @@ public class ServerConnection extends Connection {
      * Sends a simple message to the client connected through this connection
      * @param data text to be sent
      */
-    public void replyText(String data) {
-        server.sendText(outgoing, key, data);
+    public void replyText(String data) throws ServerException {
+        server.sendText(data, outgoing, key);
     }
 
     /**
@@ -42,12 +44,25 @@ public class ServerConnection extends Connection {
      * @param command   command to be sent
      * @param arguments the command arguments
      */
-    public void replyCommand(String command, String arguments) {
-        server.sendCommand(outgoing, key, command, arguments);
+    public void replyCommand(String command, String arguments) throws ServerException {
+        server.sendCommand(command, arguments, outgoing, key);
     }
 
+    /**
+     * Sends a JSONObject to the client connected through this connection
+     * @param json the JSONObject to be sent
+     */
+    public void replyJson(JSONObject json) throws ServerException {
+        server.sendJson(json, outgoing, key);
+    }
+
+    /*
+     * @return the {@link PublicKey} from the client
+     */
+    /*
     public PublicKey getKey() {
         return key;
     }
+    */
 
 }
