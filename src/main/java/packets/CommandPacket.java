@@ -1,6 +1,6 @@
 package packets;
 
-public class CommandPacket extends DataPacket {
+public class CommandPacket {
 
     private final String command;
     private final String arguments;
@@ -15,10 +15,16 @@ public class CommandPacket extends DataPacket {
         this.arguments = arguments;
     }
 
+    /**
+     * @return the command
+     */
     public String getCommand() {
         return command;
     }
 
+    /**
+     * @return the command arguments
+     */
     public String getArguments() {
         return arguments;
     }
