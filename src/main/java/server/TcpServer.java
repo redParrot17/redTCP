@@ -1,18 +1,19 @@
 package server;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import cryptography.HybridCryptography;
 import cryptography.SecuredGCMUsage;
-import listener_references.Command;
-import listener_references.Message;
+import listener_references.ServerCommand;
 import listener_references.ServerConnection;
-import listeners.CommandListener;
-import listeners.MessageListener;
+import listener_references.ServerJson;
+import listener_references.ServerMessage;
+import listeners.ServerCommandListener;
 import listeners.ServerConnectionListener;
+import listeners.ServerJsonListener;
+import listeners.ServerMessageListener;
 import org.apache.commons.codec.binary.Base64;
+import org.json.JSONObject;
 import packets.CommandPacket;
-import packets.EncryptionPacket;
+import packets.PacketType;
 
 import javax.crypto.spec.GCMParameterSpec;
 import java.io.BufferedReader;
@@ -32,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 
 public class TcpServer implements AutoCloseable, Runnable {
 
-    private static final Gson GSON = new GsonBuilder().setLenient().disableHtmlEscaping().serializeNulls().create();
     private ServerListenerManager listenerManager;
     private ExecutorService executorService;
     private ExecutorService threadPool;
@@ -61,8 +61,8 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     /**
-     * @param port      port number that the server is to connect to
-     * @param timeout   how many milliseconds of zero activity until a client is automatically disconnected
+     * @param port    port number that the server is to connect to
+     * @param timeout how many milliseconds of zero activity until a client is automatically disconnected
      */
     public TcpServer(int port, int timeout) {
         listenerManager = new ServerListenerManager();
@@ -78,9 +78,9 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     /**
-     * @param port      port number that the server is to connect to
-     * @param timeout   how many milliseconds of zero activity until a client is automatically disconnected
-     * @param backLog   how many connections are allowed
+     * @param port    port number that the server is to connect to
+     * @param timeout how many milliseconds of zero activity until a client is automatically disconnected
+     * @param backLog how many connections are allowed
      */
     public TcpServer(int port, int timeout, int backLog) {
         listenerManager = new ServerListenerManager();
@@ -96,10 +96,10 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     /**
-     * @param port      port number that the server is to connect to
-     * @param timeout   how many milliseconds of zero activity until a client is automatically disconnected
-     * @param backLog   how many connections are allowed
-     * @param bindAddr  the local InetAddress the server will bind to. Leave null if you want to use "localhost"
+     * @param port     port number that the server is to connect to
+     * @param timeout  how many milliseconds of zero activity until a client is automatically disconnected
+     * @param backLog  how many connections are allowed
+     * @param bindAddr the local InetAddress the server will bind to. Leave null if you want to use "localhost"
      */
     public TcpServer(int port, int timeout, int backLog, InetAddress bindAddr) {
         listenerManager = new ServerListenerManager();
@@ -115,11 +115,11 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     /**
-     * @param port              port number that the server is to connect to
-     * @param timeout           how many milliseconds of zero activity until a client is automatically disconnected
-     * @param backLog           how many connections are allowed
-     * @param startImmediately  should the server immediately connect and start
-     * @throws ServerException  if something went wrong during the startup process
+     * @param port             port number that the server is to connect to
+     * @param timeout          how many milliseconds of zero activity until a client is automatically disconnected
+     * @param backLog          how many connections are allowed
+     * @param startImmediately should the server immediately connect and start
+     * @throws ServerException if something went wrong during the startup process
      */
     public TcpServer(int port, int timeout, int backLog, boolean startImmediately) throws ServerException {
         listenerManager = new ServerListenerManager();
@@ -137,12 +137,12 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     /**
-     * @param port              port number that the server is to connect to
-     * @param timeout           how many milliseconds of zero activity until a client is automatically disconnected
-     * @param backLog           how many connections are allowed
-     * @param startImmediately  should the server immediately connect and start
-     * @param bindAddr          the local InetAddress the server will bind to. Leave null if you want to use "localhost"
-     * @throws ServerException  if something went wrong during the startup process
+     * @param port             port number that the server is to connect to
+     * @param timeout          how many milliseconds of zero activity until a client is automatically disconnected
+     * @param backLog          how many connections are allowed
+     * @param startImmediately should the server immediately connect and start
+     * @param bindAddr         the local InetAddress the server will bind to. Leave null if you want to use "localhost"
+     * @throws ServerException if something went wrong during the startup process
      */
     public TcpServer(int port, int timeout, int backLog, InetAddress bindAddr, boolean startImmediately) throws ServerException {
         listenerManager = new ServerListenerManager();
@@ -170,7 +170,7 @@ public class TcpServer implements AutoCloseable, Runnable {
      * Starts up the server if it is not already running
      *
      * @return an empty {@link CompletableFuture<Void>} when the server has finished starting up
-     * @throws ServerException  if something goes wrong during startup
+     * @throws ServerException if something goes wrong during startup
      */
     public CompletableFuture<Void> start() throws ServerException {
         if (alive) throw new ServerException("Server is already running");
@@ -193,19 +193,19 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     @SuppressWarnings("unused")
-    public void addMessageListener(MessageListener listener) {
+    public void addMessageListener(ServerMessageListener listener) {
         listenerManager.addMessageListener(listener);
     }
     @SuppressWarnings("unused")
-    public void removeMessageListener(MessageListener listener) {
+    public void removeMessageListener(ServerMessageListener listener) {
         listenerManager.removeMessageListener(listener);
     }
     @SuppressWarnings("unused")
-    public void addCommandListener(CommandListener listener) {
+    public void addCommandListener(ServerCommandListener listener) {
         listenerManager.addCommandListener(listener);
     }
     @SuppressWarnings("unused")
-    public void removeCommandListener(CommandListener listener) {
+    public void removeCommandListener(ServerCommandListener listener) {
         listenerManager.removeCommandListener(listener);
     }
     @SuppressWarnings("unused")
@@ -215,6 +215,14 @@ public class TcpServer implements AutoCloseable, Runnable {
     @SuppressWarnings("unused")
     public void removeConnectionListener(ServerConnectionListener listener) {
         listenerManager.removeConnectionListener(listener);
+    }
+    @SuppressWarnings("unused")
+    public void addJsonListener(ServerJsonListener listener) {
+        listenerManager.addJsonListener(listener);
+    }
+    @SuppressWarnings("unused")
+    public void removeJsonListener(ServerJsonListener listener) {
+        listenerManager.removeJsonListener(listener);
     }
     @SuppressWarnings("unused")
     public void removeAllListeners() {
@@ -241,97 +249,94 @@ public class TcpServer implements AutoCloseable, Runnable {
     }
 
     /**
-     * Attempts to encrypt the data and wrap it in an {@link EncryptionPacket}
+     * Attempts to encrypt the data and wrap it in an {@link JSONObject}
      *
-     * @param message    data to be encrypted
-     * @param packetType what the encrypted data represents
-     * @param publicKey  the {@link PublicKey} used for encryption
-     * @return           the completed {@link EncryptionPacket}
+     * @param json      data to be encrypted
+     * @param publicKey the {@link PublicKey} used for encryption
+     * @return          the completed {@link JSONObject}
      */
-    private EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey publicKey) {
-        byte iv[] = new byte[SecuredGCMUsage.IV_SIZE];
+    private JSONObject generateEncryptionPacket(JSONObject json, PublicKey publicKey) {
+        byte[] iv = new byte[SecuredGCMUsage.IV_SIZE];
         SecureRandom secRandom = new SecureRandom();
         secRandom.nextBytes(iv);
         GCMParameterSpec gcmParamSpec = new GCMParameterSpec(SecuredGCMUsage.TAG_BIT_LENGTH, iv);
-        String[] encryptedText = HybridCryptography.encrypt(message, publicKey, serverKeys.getPrivate(), gcmParamSpec, "eco.echotrace.77".getBytes());
-        if (encryptedText == null || encryptedText.length != 2) return null;
-        return new EncryptionPacket(encryptedText[1], packetType, gcmParamSpec, encryptedText[0]);
+        JSONObject encryptedJson = HybridCryptography.encrypt(json, publicKey, serverKeys.getPrivate(), gcmParamSpec, "eco.echotrace.77".getBytes());
+        if (encryptedJson == null) return null;
+        return encryptedJson;
     }
 
     /**
      * Attempts to decrypt the encryption packet back into the original content
      *
-     * @param packet     the {@link EncryptionPacket} to be decrypted
+     * @param packet     the {@link JSONObject} to be decrypted
      * @param publicKey  the {@link PublicKey} of the client that sent the packet
      * @return           the original decrypted data
      * @throws Exception if something went wrong internally with the decryption process
      */
-    private String decryptEncryptionPacket(EncryptionPacket packet, PublicKey publicKey) throws Exception {
+    private JSONObject decryptEncryptionPacket(JSONObject packet, PublicKey publicKey) throws Exception {
         return HybridCryptography.decrypt(packet, publicKey, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
     }
 
     /**
-     * Attempts to decrypt the encryption packet back into the original content
+     * Sends a simple message to the client containing {@code text}
      *
-     * @param json       json data to be decrypted
-     * @param publicKey  the {@link PublicKey} of the client that sent the packet
-     * @throws Exception if something went wrong internally with the encryption process
+     * @param text     the String text to be sent to the client
+     * @param outgoing {@link PrintWriter} used for sending messages to the client
+     * @param key      {@link PublicKey} of the client used to encrypt the data
      */
-    private String decryptEncryptionPacket(String json, PublicKey publicKey) throws Exception {
-        EncryptionPacket packet = GSON.fromJson(json, EncryptionPacket.class);
-        return HybridCryptography.decrypt(packet, publicKey, serverKeys.getPrivate(), "eco.echotrace.77".getBytes());
-    }
-
-    /**
-     * Sends a simple message to the client containing {@code data}
-     *
-     * @param outgoing  {@link PrintWriter} used for sending messages to the client
-     * @param key       {@link PublicKey} of the client used to encrypt the data
-     * @param data      {@link String} data to be sent to the client
-     */
-    public void sendText(PrintWriter outgoing, PublicKey key, String data) {
-        if (key == null || data == null || outgoing == null || !alive) return;
-        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.TEXT, key);
-        String json = GSON.toJson(packet);
-        if (packet != null) outgoing.println(Base64.encodeBase64String(json.getBytes()));
+    public void sendText(String text, PrintWriter outgoing, PublicKey key) throws ServerException {
+        send(new JSONObject().put("text", text), PacketType.TEXT, outgoing, key);
     }
 
     /**
      * Sends a command to the client
      *
-     * @param outgoing  {@link PrintWriter} used to communicate to the client
-     * @param key       {@link PublicKey} of the client used to encrypt the data
      * @param command   the command to be sent
      * @param arguments the command arguments
+     * @param outgoing  {@link PrintWriter} used to communicate to the client
+     * @param key       {@link PublicKey} of the client used to encrypt the data
      */
-    public void sendCommand(PrintWriter outgoing, PublicKey key, String command, String arguments) {
-        Objects.requireNonNull(outgoing);
-        Objects.requireNonNull(key);
-        Objects.requireNonNull(command);
-        Objects.requireNonNull(arguments);
-        String data = GSON.toJson(new CommandPacket(command, arguments));
-        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.COMMAND, key);
-        String json = GSON.toJson(packet);
-        if (packet != null) outgoing.println(Base64.encodeBase64String(json.getBytes()));
+    public void sendCommand(String command, String arguments, PrintWriter outgoing, PublicKey key) throws ServerException {
+        send(new JSONObject().put("command", command).put("arguments", arguments), PacketType.COMMAND, outgoing, key);
+    }
+
+    /**
+     * Sends a {@link JSONObject} to the client.
+     *
+     * @param json     {@link JSONObject} to be sent to the client
+     * @param outgoing {@link PrintWriter} used for sending messages to the client
+     * @param key      {@link PublicKey} of the client used to encrypt the data
+     */
+    public void sendJson(JSONObject json, PrintWriter outgoing, PublicKey key) throws ServerException {
+        send(json, PacketType.JSON, outgoing, key);
+    }
+
+    private void send(JSONObject json, PacketType type, PrintWriter outgoing, PublicKey key) throws ServerException {
+        if (key == null || outgoing == null || !alive) return;
+        if (json == null || json.isEmpty()) throw new IllegalArgumentException("Cannot send empty data");
+        JSONObject packet = generateEncryptionPacket(json, key);
+        if (packet == null || packet.isEmpty()) throw new ServerException("Failed to encrypt data: could not generate encryption packet");
+        packet.put("type", type);
+        outgoing.println(Base64.encodeBase64String(packet.toString().getBytes()));
     }
 
     /**
      * Performs a handshake with the client to swap asymmetric public keys and
      * ensure the keys were received.
      *
-     * @param   incoming    the BufferedReader representing the input stream of
-     *                      the socket the client is connected through.
-     * @param   outgoing    The PrintWriter representing the output stream of
-     *                      the socket the client is connected through.
-     * @return  The PublicKey of the client if the full handshake was
-     *          successful, or null if the handshake was unsuccessful.
+     * @param   incoming the BufferedReader representing the input stream of
+     *                   the socket the client is connected through.
+     * @param   outgoing the PrintWriter representing the output stream of
+     *                   the socket the client is connected through.
+     * @return The PublicKey of the client if the full handshake was
+     *         successful, or null if the handshake was unsuccessful.
      */
     private CompletableFuture<PublicKey> exchangePublicKeys(BufferedReader incoming, PrintWriter outgoing) throws ServerException {
         Objects.requireNonNull(incoming,"\"incoming\" cannot be null" );
         Objects.requireNonNull(outgoing, "\"outgoing\" cannot be null");
         String confirmation;
         byte[] keyBytes;
-        String message;
+        JSONObject message;
         PublicKey publicKey;
 
         try { // receive client public key
@@ -361,11 +366,11 @@ public class TcpServer implements AutoCloseable, Runnable {
         } catch (IOException e) {
             throw new ServerException("Communication failure while obtaining confirmation from the client that the server's public key was received: " + e.getMessage());
         }
-        try { message = decryptEncryptionPacket(new String(Base64.decodeBase64(confirmation)), publicKey);
+        try { message = decryptEncryptionPacket(new JSONObject(new String(Base64.decodeBase64(confirmation))), publicKey);
         } catch (Exception e) {
             throw new ServerException("Failed to decrypt confirmation message from the client: " + e.getMessage());
         }
-        if (message.equals("handshake")) return CompletableFuture.completedFuture(publicKey);
+        if (message.getString("text").equals("handshake")) return CompletableFuture.completedFuture(publicKey);
         else throw new ServerException("Received invalid confirmation that the client received the server's public key");
     }
 
@@ -391,7 +396,6 @@ public class TcpServer implements AutoCloseable, Runnable {
             ioe.printStackTrace();
         }
     }
-
 
     public class ClientConnection implements Runnable, AutoCloseable {
 
@@ -433,24 +437,30 @@ public class TcpServer implements AutoCloseable, Runnable {
                     String received = incoming.readLine();
                     if (received == null) return;
 
-                    String json = new String(Base64.decodeBase64(received));
-                    EncryptionPacket packet = GSON.fromJson(json, EncryptionPacket.class);
-                    String message = decryptEncryptionPacket(packet, clientPublicKey);
+                    String raw = new String(Base64.decodeBase64(received));
+                    JSONObject packet = new JSONObject(raw);
+                    JSONObject data = decryptEncryptionPacket(packet, clientPublicKey);
 
-                    switch (packet.getPayloadType()) {
+                    switch (packet.getEnum(PacketType.class, "type")) {
                         case TEXT:
-                            listenerManager.raiseMessageEvent(new Message(connection, message));
+                            String text = data.getString("text");
+                            listenerManager.raiseMessageEvent(new ServerMessage(text, connection));
                             break;
                         case COMMAND:
-                            CommandPacket cPacket = GSON.fromJson(message, CommandPacket.class);
+                            String command = data.getString("command");
+                            String arguments = data.getString("arguments");
+                            CommandPacket cPacket = new CommandPacket(command, arguments);
                             if (cPacket.getCommand().equals("sudo")) {
                                 if (cPacket.getArguments().equals("disconnect")) {
                                     socket.close();
                                     break;
                                 }
                             } else {
-                                listenerManager.raiseCommandEvent(new Command(connection, cPacket));
+                                listenerManager.raiseCommandEvent(new ServerCommand(cPacket, connection));
                             }
+                            break;
+                        case JSON:
+                            listenerManager.raiseJsonEvent(new ServerJson(data, connection));
                             break;
                     }
 
