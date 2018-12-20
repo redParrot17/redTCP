@@ -1,17 +1,18 @@
 package client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import cryptography.HybridCryptography;
 import cryptography.SecuredGCMUsage;
+import listener_references.ClientCommand;
 import listener_references.ClientConnection;
-import listener_references.Command;
-import listener_references.Message;
-import listeners.CommandListener;
-import listeners.MessageListener;
+import listener_references.ClientJson;
+import listener_references.ClientMessage;
+import listeners.ClientCommandListener;
+import listeners.ClientJsonListener;
+import listeners.ClientMessageListener;
 import org.apache.commons.codec.binary.Base64;
+import org.json.JSONObject;
 import packets.CommandPacket;
-import packets.EncryptionPacket;
+import packets.PacketType;
 
 import javax.crypto.spec.GCMParameterSpec;
 import java.io.BufferedReader;
@@ -31,6 +32,7 @@ import java.util.concurrent.Executors;
 
 import static cryptography.HybridCryptography.decrypt;
 import static cryptography.HybridCryptography.encrypt;
+import static packets.PacketType.TEXT;
 
 public class TcpClient implements AutoCloseable, Runnable {
 
@@ -38,7 +40,6 @@ public class TcpClient implements AutoCloseable, Runnable {
     private Socket socket;
     private String address;
     private boolean isOpen;
-    private final Gson gson;
     private KeyPair clientKeys;
     private PrintWriter outgoing;
     private ClientConnection connection;
@@ -65,7 +66,6 @@ public class TcpClient implements AutoCloseable, Runnable {
         serverPublicKey = null;
         executorService = null;
         listenerManager = new ClientListenerManager();
-        gson = new GsonBuilder().setLenient().disableHtmlEscaping().serializeNulls().create();
     }
 
     /**
@@ -88,7 +88,6 @@ public class TcpClient implements AutoCloseable, Runnable {
         serverPublicKey = null;
         executorService = null;
         listenerManager = new ClientListenerManager();
-        gson = new GsonBuilder().setLenient().disableHtmlEscaping().serializeNulls().create();
 
         if (connectImmediately) connect().join();
     }
@@ -136,8 +135,8 @@ public class TcpClient implements AutoCloseable, Runnable {
      *
      * @throws  IOException if something went wrong with the server's
      *          incoming or outgoing streams
-     * @throws  NoSuchAlgorithmException
-     * @throws  InvalidKeySpecException
+     * @throws  NoSuchAlgorithmException if the encryption algorithm didn't exist
+     * @throws  InvalidKeySpecException if the key specifications were invalid
      * @throws  ClientException if the client couldn't send a confirmation
      *          message to the server after completing the handshake
      */
@@ -155,20 +154,28 @@ public class TcpClient implements AutoCloseable, Runnable {
     }
 
     @SuppressWarnings("unused")
-    public void addMessageListener(MessageListener listener) {
+    public void addMessageListener(ClientMessageListener listener) {
         listenerManager.addMessageListener(listener);
     }
     @SuppressWarnings("unused")
-    public void removeMessageListener(MessageListener listener) {
+    public void removeMessageListener(ClientMessageListener listener) {
         listenerManager.removeMessageListener(listener);
     }
     @SuppressWarnings("unused")
-    public void addCommandListener(CommandListener listener) {
+    public void addCommandListener(ClientCommandListener listener) {
         listenerManager.addCommandListener(listener);
     }
     @SuppressWarnings("unused")
-    public void removeCommandListener(CommandListener listener) {
+    public void removeCommandListener(ClientCommandListener listener) {
         listenerManager.removeCommandListener(listener);
+    }
+    @SuppressWarnings("unused")
+    public void addJsonListener(ClientJsonListener listener) {
+        listenerManager.addJsonListener(listener);
+    }
+    @SuppressWarnings("unused")
+    public void removeJsonListener(ClientJsonListener listener) {
+        listenerManager.removeJsonListener(listener);
     }
     @SuppressWarnings("unused")
     public void removeAllListeners() {
@@ -182,19 +189,26 @@ public class TcpClient implements AutoCloseable, Runnable {
     public void run() {
         try {
             while (isOpen) {
+
                 String received = incoming.readLine();
                 if (received == null) return;
-                String json = new String(Base64.decodeBase64(received));
-                EncryptionPacket packet = gson.fromJson(json, EncryptionPacket.class);
-                String message = decryptEncryptionPacket(packet, serverPublicKey, clientKeys.getPrivate());
+                String raw = new String(Base64.decodeBase64(received));
+                JSONObject packet = new JSONObject(raw);
+                JSONObject data = decryptEncryptionPacket(packet, serverPublicKey, clientKeys.getPrivate());
 
-                switch (packet.getPayloadType()) {
+                switch (packet.getEnum(PacketType.class, "type")) {
                     case TEXT:
-                        listenerManager.raiseMessageEvent(new Message(connection, message));
+                        String text = data.getString("text");
+                        listenerManager.raiseMessageEvent(new ClientMessage(text, connection));
                         break;
                     case COMMAND:
-                        CommandPacket cPacket = gson.fromJson(message, CommandPacket.class);
-                        listenerManager.raiseCommandEvent(new Command(connection, cPacket));
+                        String command = data.getString("command");
+                        String arguments = data.getString("arguments");
+                        CommandPacket cPacket = new CommandPacket(command, arguments);
+                        listenerManager.raiseCommandEvent(new ClientCommand(cPacket, connection));
+                        break;
+                    case JSON:
+                        listenerManager.raiseJsonEvent(new ClientJson(data, connection));
                         break;
                 }
             }
@@ -211,53 +225,47 @@ public class TcpClient implements AutoCloseable, Runnable {
     }
 
     /**
-     * Attempts to encrypt the data and wrap it in an {@link EncryptionPacket}
+     * Attempts to encrypt the data and wrap it in an {@link JSONObject}
      *
-     * @param message    data to be encrypted
-     * @param packetType what the encrypted data represents
+     * @param json       data to be encrypted
      * @param publicKey  the {@link PublicKey} used for encryption
      * @param privateKey the {@link PrivateKey} used to sign the encryption
-     * @return           the completed {@link EncryptionPacket}
+     * @return           the completed {@link JSONObject}
      */
-    private static EncryptionPacket generateEncryptionPacket(String message, EncryptionPacket.PacketType packetType, PublicKey publicKey, PrivateKey privateKey) {
-        byte iv[] = new byte[SecuredGCMUsage.IV_SIZE];
+    private static JSONObject generateEncryptionPacket(JSONObject json, PublicKey publicKey, PrivateKey privateKey) {
+        byte[] iv = new byte[SecuredGCMUsage.IV_SIZE];
         SecureRandom secRandom = new SecureRandom();
         secRandom.nextBytes(iv);
         GCMParameterSpec gcmParamSpec = new GCMParameterSpec(SecuredGCMUsage.TAG_BIT_LENGTH, iv);
-        String[] encryptedText = encrypt(message, publicKey, privateKey, gcmParamSpec, "eco.echotrace.77".getBytes());
-        if (encryptedText == null || encryptedText.length != 2) return null;
-        return new EncryptionPacket(encryptedText[1], packetType, gcmParamSpec, encryptedText[0]);
+        JSONObject encryptedJson = encrypt(json, publicKey, privateKey, gcmParamSpec, "eco.echotrace.77".getBytes());
+        if (encryptedJson == null) return null;
+        return encryptedJson;
     }
 
     /**
      * Attempts to decrypt the encryption packet back into the original content
      *
-     * @param packet     the {@link EncryptionPacket} to be decrypted
+     * @param packet     the {@link JSONObject} to be decrypted
      * @param publicKey  the {@link PublicKey} of the connected server
      * @param privateKey the {@link PrivateKey} used for validating the author
      * @return           the original decrypted data
      * @throws Exception if something went wrong internally during the encryption process
      */
-    private static String decryptEncryptionPacket(EncryptionPacket packet, PublicKey publicKey, PrivateKey privateKey) throws Exception {
+    private static JSONObject decryptEncryptionPacket(JSONObject packet, PublicKey publicKey, PrivateKey privateKey) throws Exception {
         return decrypt(packet, publicKey, privateKey, "eco.echotrace.77".getBytes());
     }
 
     /**
-     * Attempts to encrypt and send the {@code data} to the server
+     * Attempts to encrypt and send the {@code text} to the server
      * that the client is currently connected to
      *
-     * @param   data the {@code String} to be sent to the server
+     * @param   text the {@code String} to be sent to the server
      * @throws  ClientException if something went wrong while trying
      *          to send the message
-     * @throws  IllegalArgumentException if {@code data} is null
+     * @throws  IllegalArgumentException if {@code text} is null
      */
-    public void sendText(String data) throws ClientException {
-        if (data == null) throw new IllegalArgumentException("Data cannot be null");
-        if (serverPublicKey == null) throw new ClientException("Failed to encrypt data: server's public async encryption key does not exist");
-        if (outgoing == null) throw new ClientException("Failed to send data: no secure connection to the server exists");
-        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.TEXT, serverPublicKey, clientKeys.getPrivate());
-        if (packet == null) throw new ClientException("Failed to encrypt data: could not generate encryption packet");
-        outgoing.println(Base64.encodeBase64String(gson.toJson(packet).getBytes()));
+    public void sendText(String text) throws ClientException {
+        send(new JSONObject().put("text", text), TEXT);
     }
 
     /**
@@ -271,18 +279,27 @@ public class TcpClient implements AutoCloseable, Runnable {
      *          to send the message
      */
     public void sendCommand(String command, String arguments) throws ClientException {
-        //if (command == null) throw new IllegalArgumentException("client.listener_references.Command cannot be null");
+        send(new JSONObject().put("command", command).put("arguments", arguments), PacketType.COMMAND);
+    }
+
+    public void sendJSON(JSONObject json) throws ClientException {
+        send(json, PacketType.JSON);
+    }
+
+    private void send(JSONObject json, PacketType type) throws ClientException {
+        if (json == null || json.isEmpty()) throw new IllegalArgumentException("Cannot send empty data");
         if (serverPublicKey == null) throw new ClientException("Failed to encrypt data: server's public async encryption key does not exist");
         if (outgoing == null) throw new ClientException("Failed to send data: no secure connection to the server exists");
-        String data = gson.toJson(new CommandPacket(command, arguments));
-        EncryptionPacket packet = generateEncryptionPacket(data, EncryptionPacket.PacketType.COMMAND, serverPublicKey, clientKeys.getPrivate());
-        if (packet == null) throw new ClientException("Failed to encrypt data: could not generate encryption packet");
-        outgoing.println(Base64.encodeBase64String(gson.toJson(packet).getBytes()));
+        JSONObject packet = generateEncryptionPacket(json, serverPublicKey, clientKeys.getPrivate());
+        if (packet == null || packet.isEmpty()) throw new ClientException("Failed to encrypt data: could not generate encryption packet");
+        packet.put("type", type);
+        outgoing.println(Base64.encodeBase64String(packet.toString().getBytes()));
     }
 
     private byte[] parseStrByteArray(String a) {
         if (a == null) return null;
-        String[] parsed = a.replaceFirst("\\[", "").replaceFirst("]", "").trim().split(", ");
+        String[] parsed = a.replaceAll("\\[", "").replaceAll("]", "")
+                .replaceAll(" ", "").split(",");
         byte[] keyBytes = new byte[parsed.length];
         for (int b=0; b<parsed.length; b++) keyBytes[b] = Byte.valueOf(parsed[b]);
         return keyBytes;
