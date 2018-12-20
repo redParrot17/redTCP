@@ -26,24 +26,30 @@ public class EncryptionPacket {
         this.key = key;
     }
 
+    /**
+     * @return the payload of the packet
+     */
     public String getPayload() {
         return payload;
     }
 
+    /**
+     * @return the {@link PacketType} defining what the payload is
+     */
     public PacketType getPayloadType() { return payloadType; }
 
+    /**
+     * @return the {@link GCMParameterSpec} of the encryption data
+     */
     public GCMParameterSpec getGcmParamSpec() {
         return gcmParamSpec;
     }
 
+    /**
+     * @return the encrypted symmetric key
+     */
     public String getKey() {
         return key;
     }
 
-    /**
-     * Enum for the different types of data to be contained within the EncryptionPacket's payload
-     */
-    public enum PacketType {
-        TEXT, COMMAND
-    }
 }
