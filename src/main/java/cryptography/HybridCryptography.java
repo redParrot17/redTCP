@@ -1,7 +1,6 @@
 package cryptography;
 
 import org.json.JSONObject;
-import packets.EncryptionPacket;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -58,7 +57,7 @@ public class HybridCryptography {
     /**
      * Attempts to decrypt the string using both symmetric and asymmetric techniques
      *
-     * @param json       {@link EncryptionPacket} that contains the encrypted data
+     * @param json       {@link JSONObject} that contains the encrypted data
      * @param publicKey  {@link PublicKey} used for verifying the integrity of the author
      * @param privateKey {@link PrivateKey} used for the asymmetric decryption
      * @param aadData    the extra data tag used during the encryption
